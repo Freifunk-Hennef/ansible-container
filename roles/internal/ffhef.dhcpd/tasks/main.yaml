@@ -1,0 +1,46 @@
+---
+
+- fail: msg="Variable '{{ item }}' is not defined"
+  when: item not in hostvars[inventory_hostname]
+  with_items:
+    - freifunk_dhcpd_data_dir
+    - freifunk_mesh_ipv4_net
+    - freifunk_dhcpd_subnet_range
+    - freifunk_dhcpd_routers
+    - freifunk_dhcpd_domain_name_servers
+    - freifunk_image_tag
+  tags: always
+
+- name: Create dhcpd data directory
+  file:
+    path: "{{ freifunk_dhcpd_data_dir }}"
+    state: directory
+    mode: 0755
+  tags: setup
+
+- name: Touch dhcpd.leases to make sure docker mounts it as file
+  command: "touch {{ freifunk_dhcpd_data_dir }}/dhcpd.leases"
+  args:
+    creates: "{{ freifunk_dhcpd_data_dir }}/dhcpd.leases"
+  tags: setup
+
+- name: Start dhcpd container
+  docker_container:
+    name: dhcpd
+    image: "ffhef/dhcpd:{{ freifunk_image_tag }}"
+    pull: True
+    state: started
+    cleanup: True
+    restart_policy: on-failure
+    network_mode: host
+    privileged: true
+    env:
+      DHCPD_SUBNET_ADDRESS: "{{ freifunk_mesh_ipv4_net | ipaddr('network') }}"
+      DHCPD_SUBNET_NETMASK: "{{ freifunk_mesh_ipv4_net | ipaddr('netmask') }}"
+      DHCPD_SUBNET_RANGE_START: "{{ freifunk_dhcpd_subnet_range | ipaddr('ip') }}"
+      DHCPD_SUBNET_RANGE_END: "{{ freifunk_dhcpd_subnet_range | ipaddr(-2) | ipaddr('ip') }}"
+      DHCPD_SUBNET_ROUTERS: "{{ freifunk_dhcpd_routers }}"
+      DHCPD_SUBNET_DOMAIN_NAME_SERVERS: "{{ freifunk_dhcpd_domain_name_servers }}"
+    volumes:
+      - "{{ freifunk_dhcpd_data_dir }}:/var/lib/dhcp"
+  tags: start

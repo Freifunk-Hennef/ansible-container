@@ -1,0 +1,101 @@
+# Create a Freifunk group that contains all hosts
+[Freifunk:children]
+master
+gateways
+
+#
+# Set variables common for all Freifunk hosts
+#
+[Freifunk:vars]
+
+# The default ssh user to use. Unset to use current user.
+ansible_user=nico
+
+# If ansible_ssh_user is not root, set ansible_become to true to use sudo
+ansible_become=yes
+
+#
+# Freifunk configuration
+#
+
+freifunk_image_tag="latest"
+
+freifunk_name=Freifunk Community
+freifunk_shortname=ffXXX
+
+# Mesh
+
+freifunk_mesh_ipv4_net=10.x.x.x/16
+freifunk_mesh_mac_begin="fe:ed:ca:fe:"
+
+# Directories
+
+freifunk_container_data_dir=/freifunk
+
+# Batman
+#################
+
+freifunk_batman_adv_version="2017.0.1"
+freifunk_batctl_version="2017.0"
+
+freifunk_batman_address_ipv4="{{ freifunk_mesh_ipv4_net | ipaddr( 10 + (freifunk_group_index|int) ) | ipaddr('ip') }}"
+
+# Tinc
+#################
+
+# Name for tinc node, don't set to a static value
+freifunk_tinc_name="{{ inventory_hostname_short }}"
+
+# Optional
+freifunk_tinc_interface_mac="{{ freifunk_mesh_mac_begin }}0{{ freifunk_group_index|int }}:01"
+ 
+
+# optional: additional hosts for tinc ("legacy" systems)
+# destination is optional and defaults to "/etc/tinc/hosts"
+# freifunk_tinc_additional_hosts='[{"name": "legacyhost", "address": "legacyhost.freifunk", "destination": "/etc/tinc"}]'
+
+# Data directory for tinc files
+freifunk_tinc_data_dir="{{ freifunk_container_data_dir }}/tinc"
+
+# Fastd
+#################
+
+# Data directory for fastd files
+freifunk_fastd_data_dir="{{ freifunk_container_data_dir }}/fastd"
+
+# number of fastd instances
+freifunk_fastd_instances="{{ ansible_processor_cores }}"
+
+# Public fastd port
+freifunk_fastd_public_port="53773"
+
+freifunk_fastd_mtu="1406"
+
+# Gateways
+#################
+
+# Peering
+freifunk_gateways_peering_local_as=12345
+freifunk_gateways_peering_gre_tunnel_mtu=1400
+freifunk_gateways_peering_gre_tunnel_mss_clamp="{{ freifunk_fastd_mtu|int - 40 }}"
+
+# DHCP
+#################
+
+# Data directory for dhcpd files
+freifunk_dhcpd_data_dir="{{ freifunk_container_data_dir }}/dhcpd"
+freifunk_dhcpd_subnet_range="{{ freifunk_mesh_ipv4_net | ipaddr( (16*256) + (((freifunk_group_index|int)-1) * 16 * 256) + 1 ) | ipaddr('ip') }}/20"
+freifunk_dhcpd_routers="{{ freifunk_gateway.mesh_address_ipv4 }}"
+freifunk_dhcpd_domain_name_servers="{{ freifunk_recursor_mesh_address_ipv4 }}"
+
+# Recursor
+#################
+freifunk_recursor_mesh_address_ipv4="{{ freifunk_mesh_ipv4_net | ipaddr( 256 + 10 + (freifunk_group_index|int) ) | ipaddr('ip') }}"
+
+# Host groups
+[master]
+server01.freifunk
+server02.freifunk
+
+[gateways:children]
+master

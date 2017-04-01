@@ -1,0 +1,93 @@
+---
+
+- fail: msg="Variable '{{ item }}' is not defined"
+  when: item not in hostvars[inventory_hostname]
+  with_items:
+    - freifunk_batman_adv_version
+    - freifunk_batctl_version
+  tags: always
+
+- fail: msg="{{ item }} has to be a string"
+  when: item != "{{ item }}"
+  with_items:
+    - freifunk_batman_adv_version
+    - freifunk_batctl_version
+  tags: always
+
+- name: Install dkms and dependencies
+  apt:
+    pkg: "{{ item }}"
+    state: installed
+  with_items:
+    - dkms
+    - build-essential
+    - linux-headers-{{ansible_kernel | regex_replace("^[0-9\.-]+", "")}}
+    - checkinstall
+    - pkg-config
+    - libnl-3-dev
+    - libnl-genl-3-dev
+  tags: setup
+
+- name: Check batman-adv version
+  shell: "modinfo -F version batman_adv || echo 0"
+  register: batman_adv_installed_version
+  tags: setup
+
+- name: Load batman-adv sources
+  get_url:
+    url: "https://downloads.open-mesh.org/batman/stable/sources/batman-adv/batman-adv-{{freifunk_batman_adv_version}}.tar.gz"
+    dest: /usr/src/
+  when: batman_adv_installed_version.stdout != freifunk_batman_adv_version
+  tags: setup
+
+- name: Unarchive batman-adv sources
+  unarchive: src="/usr/src/batman-adv-{{freifunk_batman_adv_version}}.tar.gz" dest=/usr/src remote_src=yes
+  when: batman_adv_installed_version.stdout != freifunk_batman_adv_version
+  tags: setup
+
+- name: Copy batman-adv dkms.conf
+  template:
+    src: dkms.conf.j2
+    dest: "/usr/src/batman-adv-{{ freifunk_batman_adv_version }}/dkms.conf"
+    owner: root
+    group: root
+    mode: 0644
+  when: batman_adv_installed_version.stdout != freifunk_batman_adv_version
+  tags: setup
+
+- name: Build batman
+  shell: "rm -rf /var/lib/dkms/batman-adv && dkms add -m batman-adv -v {{ freifunk_batman_adv_version }} && dkms build -m batman-adv -v {{ freifunk_batman_adv_version }} && dkms install -m batman-adv -v {{ freifunk_batman_adv_version }}"
+  when: batman_adv_installed_version.stdout != freifunk_batman_adv_version
+  tags: setup
+
+- name: Check batctl version
+  shell: "(/usr/local/sbin/batctl -v | awk '{print $2}') || echo 0"
+  register: batctl_installed_version
+  tags: setup
+
+- name: Load batctl sources
+  get_url:
+    url: "https://downloads.open-mesh.org/batman/stable/sources/batctl/batctl-{{freifunk_batctl_version}}.tar.gz"
+    dest: /usr/src/
+  when: batctl_installed_version.stdout != freifunk_batctl_version
+  tags: setup
+
+- name: Unarchive batctl sources
+  unarchive: src="/usr/src/batctl-{{freifunk_batctl_version}}.tar.gz" dest=/usr/src remote_src=yes
+  when: batctl_installed_version.stdout != freifunk_batctl_version
+  tags: setup
+
+- name: Build batctl
+  shell: "make && checkinstall -y make install"
+  args:
+    chdir: "/usr/src/batctl-{{freifunk_batctl_version}}"
+  when: batctl_installed_version.stdout != freifunk_batctl_version
+  tags: setup
+
+- name: Enable batman module on boot
+  lineinfile: dest=/etc/modules line=batman_adv
+  tags: setup
+
+- name: Load batman-adv kernel module
+  modprobe: name=batman_adv state=present
+  tags: start

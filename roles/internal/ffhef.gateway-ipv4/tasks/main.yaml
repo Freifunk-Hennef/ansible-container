@@ -1,0 +1,53 @@
+---
+
+- fail: msg="Variable '{{ item }}' is not defined"
+  when: item not in hostvars[inventory_hostname]
+  with_items:
+    - freifunk_mesh_ipv4_net
+    - freifunk_gateways_peering_gre_tunnel_mtu
+    - freifunk_gateways_peering_local_as
+    - freifunk_image_tag
+  tags: always
+
+- name: Enable kernel modules for GRE tunnel on boot
+  lineinfile: dest=/etc/modules line={{ item }}
+  with_items:
+    - ip_gre
+    - nf_nat_proto_gre
+    - nf_conntrack_proto_gre
+  tags: setup
+
+- name: Load kernel modules for GRE tunnels
+  modprobe: name={{ item }} state=present
+  with_items:
+    - ip_gre
+    - nf_nat_proto_gre
+    - nf_conntrack_proto_gre
+  tags: start
+
+- name: Start gateway-ipv4 container
+  docker_container:
+    name: gateway-ipv4
+    image: "ffhef/gateway-ipv4:{{ freifunk_image_tag }}"
+    pull: True
+    state: started
+    cleanup: True
+    restart_policy: no
+    privileged: true
+    env:
+      MESH_IPV4_NET: "{{ freifunk_mesh_ipv4_net }}"
+      GRE_TUNNEL_MTU: "{{ freifunk_gateways_peering_gre_tunnel_mtu }}"
+      GRE_TUNNEL_MSS_CLAMP: "{{ freifunk_gateways_peering_gre_tunnel_mss_clamp }}"
+      BIRD_IPV4_ROUTER_ID: "{{ freifunk_gateway.mesh_address_ipv4 }}"
+      BIRD_AS: "{{ freifunk_gateways_peering_local_as }}"
+      BIRD_IPV4_PUBLIC_ADDRESS: "{{ freifunk_gateway.peering_public_address_ipv4 }}"
+      GRE_TUNNELS: "{{ freifunk_gateway.gre_tunnels | to_json }}"
+      BGP_NEIGHBORS: "{{ freifunk_gateway.bgp_neighbors | to_json }}"
+    devices:
+      - "/dev/net/tun"
+    networks:
+    - name: "bridge"
+    - name: "freifunk-net"
+      ipv4_address: "{{ freifunk_gateway.mesh_address_ipv4 }}"
+  when: freifunk_gateway is defined
+  tags: start

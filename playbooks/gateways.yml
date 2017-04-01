@@ -1,0 +1,9 @@
+---
+- hosts: gateways
+  roles:
+  - ffhef.freifunk_facts
+  - ffhef.freifunk_node
+  - ffhef.gateway-ipv4
+  - ffhef.fastd
+  - ffhef.dhcpd
+  - ffhef.recursor

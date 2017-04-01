@@ -1,0 +1,160 @@
+---
+
+- fail: msg="Variable '{{ item }}' is not defined"
+  when: item not in hostvars[inventory_hostname]
+  with_items:
+    - freifunk_tinc_name
+    - freifunk_tinc_data_dir
+    - freifunk_tinc_interface_mac
+    - freifunk_image_tag
+  tags: always
+
+- name: Create tinc data directory
+  file:
+    path: "{{ freifunk_tinc_data_dir }}"
+    state: directory
+    mode: 0755
+  tags: setup
+
+- name: Create tinc hosts directory
+  file:
+    path: "{{ freifunk_tinc_data_dir }}/hosts"
+    state: directory
+    mode: 0755
+  tags: setup
+
+- name: Touch private key to make sure docker mounts it as file
+  command: "touch {{ freifunk_tinc_data_dir }}/rsa_key.priv"
+  args:
+    creates: "{{ freifunk_tinc_data_dir }}/rsa_key.priv"
+  tags: setup
+
+- name: Touch public key to make sure docker mounts it as file
+  command: "touch {{ freifunk_tinc_data_dir }}/rsa_key.pub"
+  args:
+    creates: "{{ freifunk_tinc_data_dir }}/rsa_key.pub"
+  tags: setup
+
+- stat: path="{{ freifunk_tinc_data_dir }}/rsa_key.priv"
+  register: tinc_rsa_key
+  tags: setup
+
+- name: Create key pair
+  docker_container:
+    name: tinc
+    image: "ffhef/tinc:{{ freifunk_image_tag }}"
+    pull: True
+    state: started
+    detach: False
+    cleanup: True
+    env:
+      TINC_NAME: "{{ freifunk_tinc_name }}"
+    volumes:
+      - "{{ freifunk_tinc_data_dir }}/rsa_key.priv:/tmp/rsa_key.priv"
+      - "{{ freifunk_tinc_data_dir }}/rsa_key.pub:/tmp/rsa_key.pub"
+    command: -K -c /tmp
+  when: tinc_rsa_key.stat.size == 0
+  tags: setup
+
+- name: Read my public key
+  slurp:
+    src: "{{ freifunk_tinc_data_dir }}/rsa_key.pub"
+  register: tinc_rsa_key_pub_slurp
+  tags: setup
+
+- name: Set variable tinc_rsa_key_pub
+  set_fact:
+    tinc_rsa_key_pub: "{{ tinc_rsa_key_pub_slurp['content'] | b64decode }}"
+  tags: setup
+
+- name: Wait for public keys on all Freifunk nodes
+  wait_for:
+    path: "{{ freifunk_tinc_data_dir }}/rsa_key.pub"
+    search_regex: ".+"
+  delegate_to: "{{ item }}"
+  with_items: "{{ groups['Freifunk'] }}"
+  tags: setup
+
+- name: Copy my connection information to all Freifunk hosts
+  template:
+    src: host_config.j2
+    dest: "{{ freifunk_tinc_data_dir }}/hosts/{{ freifunk_tinc_name }}"
+    owner: root
+    group: root
+    mode: 0644
+  delegate_to: "{{item}}"
+  with_items: "{{groups['Freifunk']}}"
+  tags: setup
+
+- name: Copy my connection information to additional tinc hosts
+  template:
+    src: host_config.j2
+    dest: "{{ item.destination | default('/etc/tinc') }}/hosts/{{ freifunk_tinc_name }}"
+    owner: root
+    group: root
+    mode: 0644
+  delegate_to: "{{ item.address }}"
+  with_items: "{{ freifunk_tinc_additional_hosts }}"
+  when: freifunk_tinc_additional_hosts is defined
+  tags: setup
+
+- name: create a local temp directory
+  local_action:
+    module: command mktemp -d "{{ lookup('env', 'TMPDIR') | default('/tmp', true) }}/ansible_tinc"
+  sudo: False
+  register: tempdir_command_output                                          
+  tags: setup
+
+- name: Copy additional tinc hosts public key to local
+  fetch:
+    src: "{{ item.destination | default('/etc/tinc') }}/hosts/{{ item.name }}"
+    fail_on_missing: yes
+    flat: yes
+    dest: "{{ tempdir_command_output.stdout }}/{{ item.name }}"
+  delegate_to: "{{ item.address }}"
+  with_items: "{{ freifunk_tinc_additional_hosts }}"
+  when: freifunk_tinc_additional_hosts is defined
+  tags: setup
+
+- name: Copy additional tinc hosts public key to remote
+  copy:
+    src: "{{ tempdir_command_output.stdout }}/{{ item.name }}"
+    dest: "{{freifunk_tinc_data_dir}}/hosts/{{ item.name }}"
+  with_items: "{{ freifunk_tinc_additional_hosts }}"
+  when: freifunk_tinc_additional_hosts is defined
+  tags: setup
+
+- name: Delete temporary directory
+  file:
+    path: "{{ tempdir_command_output.stdout }}"
+    state: absent
+  delegate_to: "127.0.0.1"
+  sudo: False
+  tags: setup
+
+- name: Wait for host configuration from all other Freifunk hosts
+  wait_for:
+    path: "{{ hostvars[item]['freifunk_tinc_data_dir'] }}/hosts/{{ hostvars[item]['freifunk_tinc_name'] }}"
+  with_items: "{{ groups['Freifunk'] }}"
+  tags: setup
+
+- name: Start tinc container
+  docker_container:
+    name: tinc
+    image: "ffhef/tinc:{{ freifunk_image_tag }}"
+    pull: True
+    state: started
+    cleanup: True
+    restart_policy: on-failure
+    network_mode: host
+    env:
+      TINC_NAME: "{{ freifunk_tinc_name }}"
+      TINC_INTERFACE_MAC: "{{ freifunk_tinc_interface_mac }}"
+    devices:
+      - "/dev/net/tun"
+    capabilities:
+      - "NET_ADMIN"
+    volumes:
+      - "{{ freifunk_tinc_data_dir }}/rsa_key.priv:/etc/tinc/rsa_key.priv"
+      - "{{ freifunk_tinc_data_dir }}/hosts/:/etc/tinc/hosts/"
+  tags: start

@@ -1,0 +1,51 @@
+---
+
+- fail: msg="Variable '{{ item }}' is not defined"
+  when: item not in hostvars[inventory_hostname]
+  with_items:
+    - freifunk_mesh_ipv4_net
+    - freifunk_batman_address_ipv4
+    - freifunk_fastd_instances
+  tags: always
+
+- name: Create freifunk_container_data_dir
+  file:
+    path: "{{ freifunk_container_data_dir }}"
+    state: directory
+    mode: 0755
+  tags: setup
+
+- name: Install bridge-utils
+  apt:
+    pkg: bridge-utils
+    state: installed
+  tags: setup
+
+- name: Create docker network "freifunk-net"
+  docker_network:
+    name: freifunk-net
+    driver: bridge
+    driver_options:
+      com.docker.network.bridge.name: freifunk-net
+    ipam_options:
+      subnet: "{{ freifunk_mesh_ipv4_net }}"
+      gateway: "{{ freifunk_batman_address_ipv4 }}"
+  tags: start, setup
+
+- name: Add iptables rule to deny any forwarding from bat0 interface
+  iptables_raw:
+    name: "Deny forwarding from bat0"
+    rules: |
+      -A FORWARD -i bat0 -j DROP
+  tags: setup
+
+- name: See if bat0 is already added to freifunk-net
+  shell: brctl show freifunk-net | grep bat0 > /dev/null ; echo $?
+  register: bridge_output
+  ignore_errors: True
+  tags: start, setup
+
+- name: Add bat0 to docker network "freifunk-net"
+  shell: brctl addif freifunk-net bat0
+  when: bridge_output.stdout != "0"
+  tags: start, setup

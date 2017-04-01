@@ -1,0 +1,60 @@
+---
+
+- name: users | Ensure users are in required state
+  user:
+    append="{{ item.append | default('yes') }}"
+    comment="{{ item.comment | default(omit) }}"
+    createhome="{{ item.createhome | default(omit) }}"
+    expires="{{ item.expires | default(omit) }}"
+    force="{{ item.force | default('yes') }}"
+    generate_ssh_key="{{ item.generate_ssh_key | default(omit) }}"
+    group="{{ item.group | default(omit) }}"
+    groups="{{ item.groups | default(omit) }}"
+    home="{{ item.home | default(omit) }}"
+    login_class="{{ item.login_class | default(omit) }}"
+    move_home="{{ item.move_home | default(omit) }}"
+    name="{{ item.name | default(item.user) | default(omit) }}"
+    non_unique="{{ item.non_unique | default(omit) }}"
+    password="{{ item.password | default(omit) }}"
+    remove="{{ item.remove | default(omit) }}"
+    seuser="{{ item.seuser | default(omit) }}"
+    shell="{{ item.shell | default(omit) }}"
+    skeleton="{{ item.skeleton | default(omit) }}"
+    ssh_key_bits="{{ item.ssh_key_bits | default(omit) }}"
+    ssh_key_comment="{{ item.ssh_key_comment | default(omit) }}"
+    ssh_key_file="{{ item.ssh_key_file | default(omit) }}"
+    ssh_key_passphrase="{{ item.ssh_key_passphrase | default(omit) }}"
+    ssh_key_type="{{ item.ssh_key_type | default(omit) }}"
+    state="{{ item.state | default(omit) }}"
+    system="{{ item.system | default(omit) }}"
+    uid="{{ item.uid | default(omit) }}"
+    update_password="{{ item.update_password | default(omit) }}"
+  with_items: "{{ usermanage_user_with_items }}"
+  when: cuser.users_db is defined
+
+- name: users | Manage public key for users
+  authorized_key:
+    exclusive="{{ item.1.exclusive | default(omit) }}"
+    key="{{ item.1.key }}"
+    key_options="{{ item.1.key_options | default(omit) }}"
+    manage_dir="{{ item.1.manage_dir | default('yes') }}"
+    path="{{ item.1.path | default(omit) }}"
+    state="{{ item.1.state | default(omit) }}"
+    user="{{ item.0.user | default(item.0.name) }}"
+    validate_certs="{{ item.1.validate_certs | default(omit) }}"
+  with_subelements:
+      - "{{ usermanage_keys_with_items }}"
+      - keys
+  register: keyrc
+  failed_when: "'failed' in keyrc and 'getpwnam' not in keyrc.msg"
+  when: cuser.key_db is defined
+
+- name: users | Manage private key for users
+  copy:
+     content="{{ item.privkey }}"
+     dest="{{ item.home | default(usermanage_default_home_dir_prefix + "/" + item.user ) }}/{{ usermanage_priv_key_suffix}}"
+     mode=0600
+     owner="{{ item.user }}"
+  with_items: "{{ usermanage_users_privkey | default([]) }}"
+  when: usermanage_users_privkey is defined
+  no_log: True

@@ -1,0 +1,15 @@
+{
+  "id": "dummy",
+  "action": "create",
+  "shell": "/bin/bash",
+  "comment": "Dummy User",
+  "system": false,
+  "password": "",
+  "groups": [
+    "sudo",
+    "adm"
+  ],
+  "ssh_keys": [
+    "ssh-rsa XXX dummy@dummy"
+  ]
+}

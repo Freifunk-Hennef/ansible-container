@@ -1,0 +1,9 @@
+---
+- hosts: Freifunk
+  roles:
+  - ffhef.freifunk_facts
+  - ffhef.tinc
+  - ffhef.freifunk_node
+  - { role: ffhef.authentication, tags: [ 'setup' ] }
+  - { role: angstwad.docker_ubuntu, tags: [ 'setup' ] }
+  - ffhef.batman

@@ -1,0 +1,13 @@
+freifunk_gateway:
+  peering_public_address_ipv4: 1.2.3.4
+  mesh_address_ipv4: "{{ freifunk_mesh_ipv4_net | ipaddr( 256 + freifunk_group_index|int ) | ipaddr('ip') }}"
+  gre_tunnels:
+    - name: TUNNEL
+      tunnel_endpoint: 1.2.3.4
+      tunnel_address_ipv4: 1.2.3.4
+      tunnel_peer_ipv4: 1.2.3.4
+  bgp_neighbors:
+    - name: TUNNEL
+      as: 12345
+      address_ipv4: 1.2.3.4
+      source_ipv4: 1.2.3.4

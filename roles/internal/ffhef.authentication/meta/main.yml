@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  author: Nico <nico@freifunk-hennef.de>
+  description: Manage authentication from a databag
+  min_ansible_version: 1.2
+dependencies: 
+- usermanage
+- { role: usermanage, usermanage_user_source_files: [ { path: "../databags/users/", databag: true } ] }

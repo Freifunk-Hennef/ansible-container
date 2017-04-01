@@ -1,0 +1,120 @@
+
+---
+driver                    :
+    name                  : docker
+    socket                : unix:///var/run/docker.sock
+    use_sudo              : false
+
+provisioner               :
+    name                  : ansible_push
+    #verbose               : "vvvv"
+    chef_bootstrap_url    : nil
+    ansible_config        : "test/ansible.cfg"
+    idempotency_test      : True
+    diff                  : True
+
+verifier                  :
+  name                    : serverspec
+  remote_exec             : false
+  default_pattern         : true
+
+
+platforms:
+ - name                   : ubuntu14.04-v2.0
+   provisioner            :
+     ansible_playbook_bin : "$(avm path v2.0)ansible-playbook"
+
+   driver_config          :
+     image                : ubuntu:14.04
+     platform             : ubuntu
+
+ - name                   : ubuntu16.04-v2.0
+   provisioner            :
+     ansible_playbook_bin : "$(avm path v2.0)ansible-playbook"
+   driver_config          :
+     image                : ubuntu:16.04
+     platform             : ubuntu
+
+ - name                   : ubuntu14.04-v2.2
+   provisioner            :
+     ansible_playbook_bin : "$(avm path v2.2)ansible-playbook"
+   driver_config          :
+     image                : ubuntu:14.04
+     platform             : ubuntu
+
+ - name                   : ubuntu16.04-v2.2
+   provisioner            :
+     ansible_playbook_bin : "$(avm path v2.2)ansible-playbook"
+   driver_config          :
+     image                : ubuntu:16.04
+     platform             : ubuntu
+
+ - name                   : centos7-v2.2
+   provisioner            :
+     ansible_playbook_bin : "$(avm path v2.2)ansible-playbook"
+   driver_config          :
+     image                : centos:7
+     platform             : centos
+
+ - name                   : alpine-v2.2
+   provisioner            :
+     ansible_playbook_bin : "$(avm path v2.2)ansible-playbook"
+   driver_config          :
+     image                : alpine:3.4
+     platform             : alpine
+     provision_command    :
+                             - apk add python shadow
+                             - mkdir -p /opt
+
+suites:
+  - name                  : group
+    provisioner           :
+        playbook          : "test/application/group.yml"
+
+  - name                  : simple
+    provisioner           :
+        playbook          : "test/application/simple.yml"
+
+  - name                  : selected_users
+    provisioner           :
+        playbook          : "test/integration/selected_users/run.yml"
+
+  - name                  : advanced
+    provisioner           :
+        playbook          : "test/application/advanced.yml"
+
+  - name                  : source-files
+    provisioner           :
+        playbook          : "test/application/source_files.yml"
+
+  - name                  : source-databag
+    provisioner           :
+        playbook          : "test/application/source_databag.yml"
+
+  - name                  : multi-source-files
+    provisioner           :
+        playbook          : "test/application/multi_source_files.yml"
+
+  - name                  : team
+    provisioner           :
+        playbook          : "test/application/team.yml"
+
+  - name                  : extra-simple
+    provisioner           :
+        playbook          : "test/application/extra_simple.yml"
+
+  - name                  : extra-advanced
+    provisioner           :
+        playbook          : "test/application/extra_advanced.yml"
+
+  - name                  : extra-team
+    provisioner           :
+        playbook          : "test/application/extra_team.yml"
+
+  - name                  : include-vars-file
+    provisioner           :
+        playbook          : "test/application/include_vars_file.yml"
+
+  - name                  : include-vars-dir
+    provisioner           :
+        playbook          : "test/application/include_vars_dir.yml"

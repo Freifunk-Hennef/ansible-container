@@ -1,0 +1,17 @@
+---
+
+usermanage_groupsdb  :
+      - name         : "group1"
+        state        : "present"
+        gid          : "5000"
+        system       : "true"
+
+      - name         : "group2"
+        state        : "present"
+        gid          : "5001"
+        system       : "false"
+
+      - name         : "group3"
+
+      - name         : "group4"
+        state        : "absent"

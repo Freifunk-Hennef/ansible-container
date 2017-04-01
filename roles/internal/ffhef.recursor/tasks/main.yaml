@@ -1,0 +1,27 @@
+---
+
+- fail: msg="Variable '{{ item }}' is not defined"
+  when: item not in hostvars[inventory_hostname]
+  with_items:
+    - freifunk_mesh_ipv4_net
+    - freifunk_recursor_mesh_address_ipv4
+    - freifunk_image_tag
+  tags: always
+
+- name: Start recursor container
+  docker_container:
+    name: recursor
+    image: "ffhef/recursor:{{ freifunk_image_tag }}"
+    pull: True
+    state: started
+    cleanup: True
+    restart_policy: on-failure
+    command: "--allow-from={{ freifunk_mesh_ipv4_net }} --local-address={{ freifunk_recursor_mesh_address_ipv4 }} --daemon=no"
+    dns_servers: 8.8.8.8
+    env:
+      MESH_IPV4_NET: "{{ freifunk_mesh_ipv4_net }}"
+    networks:
+    - name: "bridge"
+    - name: "freifunk-net"
+      ipv4_address: "{{ freifunk_recursor_mesh_address_ipv4 }}"
+  tags: start

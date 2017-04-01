@@ -1,0 +1,13 @@
+- fail: msg="Variable '{{ item }}' is not defined"
+  when: item not in hostvars[inventory_hostname]
+  with_items:
+    - freifunk_name
+    - freifunk_shortname
+    - freifunk_mesh_ipv4_net
+    - freifunk_container_data_dir
+  tags: always
+
+- name: Set index in current group
+  set_fact:
+    freifunk_group_index: "{{ groups.Freifunk.index(inventory_hostname) + 1 }}"
+  tags: always

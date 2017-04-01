@@ -1,0 +1,128 @@
+---
+
+- fail: msg="Variable '{{ item }}' is not defined"
+  when: item not in hostvars[inventory_hostname]
+  with_items:
+    - freifunk_fastd_data_dir
+    - freifunk_fastd_instances
+    - freifunk_fastd_public_port
+    - freifunk_fastd_mtu
+    - freifunk_mesh_mac_begin
+    - freifunk_group_index
+    - freifunk_image_tag
+  tags: always
+
+- name: Create fastd data directory
+  file:
+    path: "{{ freifunk_fastd_data_dir }}"
+    state: directory
+    mode: 0755
+  tags: setup
+
+- stat: path="{{ freifunk_fastd_data_dir }}/fastd.secret"
+  register: fastd_secret_stat
+  tags: setup
+
+- name: Create key pair
+  shell: "docker run --rm ffhef/fastd --generate-key"
+  when: fastd_secret_stat.stat.exists == False
+  register: fastd_generate_key_output
+  tags: setup
+
+- name: Get keys from output
+  set_fact:
+    fastd_secret: "{{ fastd_generate_key_output.stdout_lines[0] | regex_replace('^Secret: ', '') }}"
+    fastd_public: "{{ fastd_generate_key_output.stdout_lines[1] | regex_replace('^Public: ', '') }}"
+  when: fastd_secret_stat.stat.exists == False
+  tags: setup
+
+- name: Save secret key
+  copy:
+    content: "{{ fastd_secret }}"
+    dest: "{{freifunk_fastd_data_dir}}/fastd.secret"
+  when: fastd_secret_stat.stat.exists == False
+  tags: setup
+
+- name: Save public key
+  copy:
+    content: "{{ fastd_public }}"
+    dest: "{{ freifunk_fastd_data_dir }}/fastd.public"
+  when: fastd_secret_stat.stat.exists == False
+  tags: setup
+
+- name: Read secret
+  slurp:
+    src: "{{freifunk_fastd_data_dir}}/fastd.secret"
+  register: fastd_secret_slurp
+  tags: start
+
+- name: Read public key
+  slurp:
+    src: "{{freifunk_fastd_data_dir}}/fastd.public"
+  register: fastd_public_slurp
+  tags: start
+
+- name: Set variable fastd_secret
+  set_fact:
+    fastd_secret: "{{ fastd_secret_slurp['content'] | b64decode | replace('\n', '') }}"
+  tags: start
+
+- name: Set variable fastd_public
+  set_fact:
+    fastd_public: "{{ fastd_public_slurp['content'] | b64decode | replace('\n', '') }}"
+  tags: start
+
+- name: Start fastd containers
+  docker_container:
+    name: "fastd{{ item }}"
+    image: "ffhef/fastd:{{ freifunk_image_tag }}"
+    pull: "{{ item|int == 1 }}"
+    state: started
+    cleanup: True
+    restart_policy: on-failure
+    network_mode: host
+    env:
+      FASTD_SECRET: "{{ fastd_secret }}"
+      FASTD_PORT: "{{ 10000 + item|int }}"
+      FASTD_BIND_ADDRESS: "127.0.0.1"
+      FASTD_MTU: "{{ freifunk_fastd_mtu }}"
+      FASTD_INTERFACE_MAC: "{{ freifunk_mesh_mac_begin }}0{{ freifunk_group_index|int }}:{{ 10 + (item|int) }}"
+    devices:
+      - "/dev/net/tun"
+    capabilities:
+      - "NET_ADMIN"
+  sequence: start=1 end="{{ freifunk_fastd_instances }}" format="%02x"
+  tags: start
+
+- name: Install iptables-persistent
+  apt:
+    pkg: iptables-persistent
+    state: installed
+  tags: setup
+
+- name: Allow forwardings to loopback interface
+  sysctl:
+    name: net.ipv4.conf.eth0.route_localnet
+    value: 1
+    state: present
+  tags: setup
+
+- name: Install iptables load balancing rules
+  iptables_raw:
+    name: "Mark packets for fastd{{item}}"
+    table: mangle
+    rules: |
+      -A PREROUTING -m recent --name fastd{{item}} --rcheck --seconds 60 -j MARK --set-mark 0x10{{ item|int }}
+      -A PREROUTING -p udp -i eth0 --dport {{ freifunk_fastd_public_port }} -m mark --mark 0 -m statistic --mode nth --every {{ freifunk_fastd_instances - (item|int -1) }} --packet 0 -j MARK --set-mark 0x10{{ item|int }}
+      -A PREROUTING -m mark --mark 0x10{{ item|int }} -m recent --name fastd{{item}} --set
+  sequence: start=1 end="{{ freifunk_fastd_instances }}" format="%02x"
+  tags: setup, iptables
+
+- name: Install iptables DNAT rules
+  iptables_raw:
+    name: "Forward packets to fastd{{item}}"
+    table: nat
+    rules: |
+      -A PREROUTING -p udp -m mark --mark 0x10{{ item|int }} -j DNAT --to-destination 127.0.0.1:{{ 10000 + item|int }}
+  sequence: start=1 end="{{ freifunk_fastd_instances }}" format="%02x"
+  tags: setup, iptables
