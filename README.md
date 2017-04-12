@@ -28,13 +28,26 @@ Auf der Control Machine wird eine aktuelle Ansible Installation (>=2.2) vorausge
 
 Außerdem sollte von der Control Machine eine Anmeldung an alle Server ohne Passwort (SSH key authentication) möglich sein, um nicht bei jedem Ansible Run das Passwort angeben zu müssen.
 
-
 ## Tags
 
 | Tag   | Aufgabe                                                 |
 | ----- | ------------------------------------------------------- |
 | setup | Pakete installieren, Keys und Konfigurationen erstellen |
 | start | Docker-Netzwerke vorbereiten, Docker-Container starten  |
+
+## Variablen
+
+| Name                     | Beschreibung                               | Format                     | Default              |
+| ------------------------ | ------------------------------------------ | -------------------------- | -------------------- |
+| `freifunk_image_tag`     | Tag der Dockerimages, die verwendet werden | Docker Image Tag Name      | `latest`             |
+| `freifunk_name`          | Vollständiger Name der Freifunk-Community  | String                     | `Freifunk Community` |
+| `freifunk_shortname`     | Kurzname der Freifunk-Community            | String                     | `ffXXX`              |
+| `freifunk_mesh_ipv4_net` | IPv4-Netz im Mesh                          | IPv4-Netz in CIDR Notation | `10.x.x.x/16`        |
+| `freifunk_mesh_mac_begin` | Erste 4 Bytes der automatisch generierten MAC-Adressen  | MAC-Adresse 4 Bytes inkl. abschließendem `:` | `fe:ed:ca:fe:`        |
+| `freifunk_container_data_dir` | Verzeichnis für persistente Daten  | Verzeichnis ohne abschließendes `/` | `/freifunk`        |
+| `freifunk_batman_adv_version` | B.A.T.M.A.N. Advanced Version (Kernelmodul) | Versionsnummer | `2017.0.1`        |
+| `freifunk_batctl_version` | B.A.T.M.A.N. `batctl` Version (Utility) | Versionsnummer | `2017.0`        |
+| `freifunk_betman_address_ipv4` | IP-Adresse für das `bat0`-Interface auf den Servern | IP-Adresse | ``        |
 
 ## Rollen / Container
 
