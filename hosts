@@ -9,7 +9,7 @@ gateways
 [Freifunk:vars]
 
 # The default ssh user to use. Unset to use current user.
-ansible_user=nico
+#ansible_user=
 
 # If ansible_ssh_user is not root, set ansible_become to true to use sudo
 ansible_become=yes
