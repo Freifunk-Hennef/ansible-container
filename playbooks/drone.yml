@@ -1,0 +1,5 @@
+---
+- hosts: drone
+  roles:
+  - ffhef.freifunk_facts
+  - ffhef.drone

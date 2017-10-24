@@ -2,3 +2,4 @@
 # file: site.yml
 - include: freifunk.yml
 - include: gateways.yml
+- include: drone.yml

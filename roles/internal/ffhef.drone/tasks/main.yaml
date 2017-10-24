@@ -1,0 +1,61 @@
+---
+
+- fail: msg="Variable '{{ item }}' is not defined"
+  when: item not in hostvars[inventory_hostname]
+  with_items:
+    - drone_host
+    - drone_admin
+    - drone_orgs
+    - drone_github
+    - drone_github_client
+    - drone_github_secret
+    - drone_secret
+  tags: always
+
+- name: Start drone container
+  docker_container:
+    name: drone
+    image: "drone/drone:0.8.1"
+    pull: True
+    state: started
+    cleanup: True
+    restart_policy: on-failure
+    ports:
+    - "8000:8000"
+    env:
+      DRONE_OPEN: true
+      DRONE_HOST: "{{ drone_host }}"
+      DRONE_ADMIN: "{{ drone_admin }}"
+      DRONE_ORGS: "{{ drone_orgs }}"
+      DRONE_GITHUB: "{{ drone_github }}"
+      DRONE_GITHUB_CLIENT: "{{ drone_github_client }}"
+      DRONE_GITHUB_SECRET: "{{ drone_github_secret }}"
+      DRONE_SECRET: "{{ drone_secret }}"
+      DEPLOYKEY: "{{ drone_deploykey }}"
+    volumes:
+    - "{{ drone_data_dir }}:/var/lib/drone"
+    networks:
+    - name: "freifunk-net"
+      ipv4_address: "{{ drone_mesh_address_ipv4 }}"
+    - name: "bridge"
+  tags: start
+
+- name: Start drone-agent container
+  docker_container:
+    name: drone-agent
+    image: "drone/agent:0.8.1"
+    pull: True
+    state: started
+    cleanup: True
+    restart_policy: on-failure
+    links:
+    - "drone:drone"
+    volumes:
+    - "/var/run/docker.sock:/var/run/docker.sock"
+    env:
+      DRONE_SERVER: "drone:9000"
+      DRONE_SECRET: "{{ drone_secret }}"
+      DRONE_TIMEOUT: "240m"
+    networks:
+    - name: "bridge"
+  tags: start

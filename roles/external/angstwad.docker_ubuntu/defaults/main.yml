@@ -1,26 +1,44 @@
 ---
-# docker-engine is the default package name
-docker_pkg_name: docker-engine
+# uninstall previous versions of docker, but not by default
+# https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/#uninstall-old-versions
+uninstall_previous_docker_versions: false
+
+# assume that the desired version is community edition
+docker_edition: ce
+
+# docker-ce is the default package name
+docker_pkg_name: "{{ 'docker-ee' if docker_edition == 'ee' else 'docker-ce' }}"
 docker_apt_cache_valid_time: 600
+docker_aufs_enabled: true
 
 # docker dns path for docker.io package ( changed at ubuntu 14.04 from docker to docker.io )
 docker_defaults_file_path: /etc/default/docker
 
+# The package name required for gnupg curl
+apt_gnupg_curl_pkg: gnupg-curl
+
 # Important if running Ubuntu 12.04-13.10 and ssh on a non-standard port
 ssh_port: 22
 # Place to get apt repository key
-apt_key_url: hkp://p80.pool.sks-keyservers.net:80
+apt_key_url: https://download.docker.com/linux/ubuntu/gpg
 # apt repository key signature
-apt_key_sig: 58118E89F3A912897C070ADBF76221572C52609D
-# Name of the apt repository for docker
-apt_repository: deb https://apt.dockerproject.org/repo {{ ansible_lsb.id|lower }}-{{ ansible_lsb.codename|lower }} main
-# The following help expose a docker port or to add additional options when
-# running docker daemon.  The default is to not use any special options.
-#docker_opts: >
-#  -H unix://
-#  -H tcp://0.0.0.0:2375
-#  --log-level=debug
-docker_opts: ""
+apt_key_sig: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+# Name of the apt repository for Docker CE or EE
+apt_repository: "deb [arch=amd64] https://download.docker.com/linux/{{ ansible_lsb.id|lower }} {{ ansible_lsb.codename|lower }} stable"
+
+# daemon_json allows you to configure the daemon with the daemon.json file.
+# https://docs.docker.com/engine/reference/commandline/dockerd/#on-linux
+#daemon_json:
+#  hosts:
+#    - "fd://"
+#    - "tcp://0.0.0.0:2376"
+#  log-level: debug
+#  log-driver: json-file
+#  log-opts:
+#      max-file: "3"
+#      max-size: "10m"
+daemon_json:
+
 # List of users to be added to 'docker' system group (disabled by default)
 # SECURITY WARNING: 
 # Be aware that granted users can easily get full root access on the docker host system!
@@ -33,18 +51,22 @@ docker_group_members: []
 # if docker_http_proxy is undefined the role will not set/modify any ENV vars
 docker_http_proxy:
 docker_https_proxy:
+docker_no_proxy:
 
 # Flags for whether to install pip packages
 pip_install_pip: true
 pip_install_setuptools: true
-pip_install_docker_py: true
+# pip_install_docker is ignored if pip_install_docker_compose is true as docker-compose as a dependency over docker.
+# See var/main.yml for more information.
+pip_install_docker: true
 pip_install_docker_compose: true
-install_docker_py_on_1604: false
 
 # Versions for the python packages that are installed
 pip_version_pip: latest
 pip_version_setuptools: latest
-pip_version_docker_py: latest
+# pip_version_docker is ignored if pip_install_docker_compose is true as docker-compose as a dependency over docker.
+# See var/main.yml for more information.
+pip_version_docker: latest
 pip_version_docker_compose: latest
 
 # If this variable is set to true kernel updates and host restarts are permitted.

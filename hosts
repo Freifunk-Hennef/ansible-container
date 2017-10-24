@@ -92,6 +92,18 @@ freifunk_dhcpd_domain_name_servers="{{ freifunk_recursor_mesh_address_ipv4 }}"
 #################
 freifunk_recursor_mesh_address_ipv4="{{ freifunk_mesh_ipv4_net | ipaddr( 256 + 10 + (freifunk_group_index|int) ) | ipaddr('ip') }}"
 
+# Drone
+#################
+drone_host="ci.freifunk-community.de"
+drone_admin="userXXX"
+drone_orgs="organizationXXX"
+drone_github="true"
+drone_github_client="XXX"
+drone_github_secret="XXX"
+drone_secret="XXX"
+drone_mesh_address_ipv4="{{ freifunk_mesh_ipv4_net | ipaddr( 256 + 20 + (freifunk_group_index|int) ) | ipaddr('ip') }}"
+drone_deploykey="XXX"
+
 # Host groups
 [master]
 server01.freifunk

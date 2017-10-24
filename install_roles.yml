@@ -1,5 +1,5 @@
 - src: angstwad.docker_ubuntu
-  version: v2.2.2
+  version: v3.3.2
 
 - src: https://github.com/AutomationWithAnsible/ansible-usermanage.git
   version: v1.7.0

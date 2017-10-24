@@ -101,7 +101,7 @@
 - name: create a local temp directory
   local_action:
     module: command mktemp -d "{{ lookup('env', 'TMPDIR') | default('/tmp', true) }}/ansible_tinc"
-  sudo: False
+  become: False
   register: tempdir_command_output                                          
   tags: setup
 
@@ -129,7 +129,7 @@
     path: "{{ tempdir_command_output.stdout }}"
     state: absent
   delegate_to: "127.0.0.1"
-  sudo: False
+  become: False
   tags: setup
 
 - name: Wait for host configuration from all other Freifunk hosts

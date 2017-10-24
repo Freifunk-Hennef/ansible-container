@@ -28,7 +28,7 @@
   docker_container:
     name: dhcpd
     image: "ffhef/dhcpd:{{ freifunk_image_tag }}"
-    pull: True
+    pull: False
     state: started
     cleanup: True
     restart_policy: on-failure
