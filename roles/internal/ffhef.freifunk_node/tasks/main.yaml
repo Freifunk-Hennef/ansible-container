@@ -48,4 +48,5 @@
 - name: Add bat0 to docker network "freifunk-net"
   shell: brctl addif freifunk-net bat0
   when: bridge_output.stdout != "0"
+  ignore_errors: True
   tags: start, setup
