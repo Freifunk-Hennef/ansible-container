@@ -3,3 +3,4 @@
 - include: freifunk.yml
 - include: gateways.yml
 - include: drone.yml
+- include: ffhef-fw-dl.yml

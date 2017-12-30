@@ -104,6 +104,11 @@ drone_secret="XXX"
 drone_mesh_address_ipv4="{{ freifunk_mesh_ipv4_net | ipaddr( 256 + 20 + (freifunk_group_index|int) ) | ipaddr('ip') }}"
 drone_deploykey="XXX"
 
+# ffhef-fw-dl
+#################
+freifunk_ffhef_fw_dl_firmware_dir="{{ freifunk_container_data_dir }}/firmware"
+freifunk_ffhef_fw_dl_mesh_address_ipv4="{{ freifunk_mesh_ipv4_net | ipaddr( 256 + 30 + (freifunk_group_index|int) ) | ipaddr('ip') }}"
+
 # Host groups
 [master]
 server01.freifunk

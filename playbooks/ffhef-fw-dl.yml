@@ -1,0 +1,5 @@
+---
+- hosts: ffhef-fw-dl
+  roles:
+  - ffhef.freifunk_facts
+  - ffhef.fw-dl

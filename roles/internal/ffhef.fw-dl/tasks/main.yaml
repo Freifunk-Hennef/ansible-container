@@ -1,0 +1,26 @@
+---
+
+- fail: msg="Variable '{{ item }}' is not defined"
+  when: item not in hostvars[inventory_hostname]
+  with_items:
+  - freifunk_ffhef_fw_dl_firmware_dir
+  - freifunk_ffhef_fw_dl_mesh_address_ipv4
+  tags: always
+
+- name: Start ffhef-fw-dl container
+  docker_container:
+    name: ffhef-fw-dl
+    image: "ffhef/ffhef-fw-dl:latest"
+    pull: True
+    state: started
+    cleanup: True
+    restart_policy: on-failure
+    ports:
+    - "8001:80"
+    volumes:
+    - "{{ freifunk_ffhef_fw_dl_firmware_dir }}:/var/www/html/firmware"
+    networks:
+    - name: "freifunk-net"
+      ipv4_address: "{{ freifunk_ffhef_fw_dl_mesh_address_ipv4 }}"
+    - name: "bridge"
+  tags: start
