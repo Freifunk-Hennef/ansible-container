@@ -5,5 +5,5 @@
   - ffhef.freifunk_node
   - ffhef.gateway-ipv4
   - ffhef.fastd
-# - ffhef.dhcpd
-# - ffhef.recursor
+  - ffhef.dhcpd
+  - ffhef.recursor
